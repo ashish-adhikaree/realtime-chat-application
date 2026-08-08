@@ -5,7 +5,13 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch --watch src src/index.ts",
-    "build": "tsc src/index.ts"
+    "build": "tsc src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "auth:generate": "better-auth generate --config src/lib/auth.ts --output src/db/schema/auth.ts --yes",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
   },
   "keywords": [],
   "author": "",
@@ -13,12 +19,16 @@
   "packageManager": "pnpm@11.17.0",
   "dependencies": {
     "@azure/storage-blob": "^12.29.1",
+    "@better-auth/drizzle-adapter": "^1.6.26",
     "axios": "^1.13.2",
+    "better-auth": "^1.6.26",
     "cls-hooked": "^4.2.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.2",
     "express": "^5.1.0",
+    "pg": "^8.22.0",
     "tsx": "^4.20.6",
     "uuid": "^13.0.0",
     "winston": "^3.18.3",
@@ -30,6 +40,9 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/node": "^24.10.1",
+    "@types/pg": "^8.20.4",
+    "auth": "^1.6.26",
+    "drizzle-kit": "^0.31.10",
     "typescript": "^5.9.3"
   }
 }

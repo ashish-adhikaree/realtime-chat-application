@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import { LoginForm } from "@/components/auth/login-form";
+import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 
 export default function Page() {
     return (
         <Suspense>
-            <LoginForm />
+            <ResetPasswordForm />
         </Suspense>
     );
 }

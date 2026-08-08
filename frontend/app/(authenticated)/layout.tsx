@@ -1,13 +1,16 @@
 import { redirect } from "next/navigation";
-import { ChatView } from "@/components/chat/chat-view";
 import { getServerSession } from "@/lib/session";
 
-export default async function Home() {
+export default async function AuthenticatedLayout({
+    children,
+}: Readonly<{
+    children: React.ReactNode;
+}>) {
     const session = await getServerSession();
 
     if (!session) {
         redirect("/login");
     }
 
-    return <ChatView user={session.user} />;
+    return <>{children}</>;
 }

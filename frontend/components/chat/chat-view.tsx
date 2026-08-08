@@ -4,12 +4,14 @@ import { useState } from "react";
 import { Mic01Icon, PlusSignIcon, SentIcon, SmileIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
+import { AccountMenu } from "@/components/chat/account-menu";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { ConversationList } from "@/components/chat/conversation-list";
 import { MessageThread } from "@/components/chat/message-thread";
 import { mockConversations, mockMessagesByConversation } from "@/lib/mock";
+import type { User } from "@/lib/auth-client";
 
-export function ChatView() {
+export function ChatView({ user }: { user: User }) {
     const [selectedId, setSelectedId] = useState(mockConversations[0].id);
     const selectedConversation = mockConversations.find((c) => c.id === selectedId) ?? mockConversations[0];
     const messages = mockMessagesByConversation[selectedId] ?? [];
@@ -18,6 +20,7 @@ export function ChatView() {
     return (
         <div className="flex h-dvh items-stretch">
             <aside className="flex min-h-0 w-[380px] flex-col border-r bg-card p-4">
+                <AccountMenu user={user} />
                 <ConversationList conversations={mockConversations} selectedId={selectedId} onSelect={setSelectedId} />
             </aside>
             <aside className="flex min-h-0 flex-1 flex-col">

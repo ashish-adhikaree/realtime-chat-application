@@ -1,14 +1,16 @@
+import { API_PREFIX, AUTH_PREFIX } from '@/lib/constants';
+import env, { frontendOrigins } from '@/config/env';
 import LogContextMiddleware from '@/middlewares/log';
+import { attachSession } from '@/middlewares/auth';
 import { errorHandler } from '@/middlewares/error';
 import { systemLogger } from '@/lib/utils/logger';
-import { API_PREFIX } from '@/lib/constants';
+import { toNodeHandler } from 'better-auth/node';
 import { createNamespace } from 'cls-hooked';
 import cookieParser from 'cookie-parser';
+import { auth } from '@/lib/auth';
 import express from 'express';
 import cors from 'cors';
-import env from '@/config/env';
 import TestRouter from './routes';
-
 
 const app = express();
 
@@ -16,22 +18,22 @@ createNamespace('request');
 
 app.use(cookieParser());
 
-const frontendOrigins = (env.FRONTEND_URL || '')
-  .split(',')
-  .map((u) => u.trim())
-  .filter(Boolean);
-
 app.use(
   cors({
     origin: (origin: any, callback: any) => {
       if (!origin) return callback(null, true);
+			console.log('CORS origin:', origin);
       if (frontendOrigins.includes(origin)) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   })
 );
+
+app.use(LogContextMiddleware);
+
+app.all(`${AUTH_PREFIX}/*splat`, toNodeHandler(auth));
 
 app.use(
   express.json({
@@ -39,7 +41,7 @@ app.use(
   })
 );
 
-app.use(LogContextMiddleware);
+app.use(attachSession);
 
 app.use(`${API_PREFIX}/test`, TestRouter);
 

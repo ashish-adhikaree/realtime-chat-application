@@ -8,6 +8,13 @@
       "when": 1786122120454,
       "tag": "0000_curly_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786207832371,
+      "tag": "0001_aspiring_maestro",
+      "breakpoints": true
     }
   ]
 }

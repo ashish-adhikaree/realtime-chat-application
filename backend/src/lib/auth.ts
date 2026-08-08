@@ -1,5 +1,6 @@
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
 import env, { frontendOrigins, isProduction } from '@/config/env';
+import { username } from 'better-auth/plugins/username';
 import { sendEmail } from '@/lib/utils/email';
 import { AUTH_PREFIX } from '@/lib/constants';
 import { betterAuth } from 'better-auth';
@@ -73,6 +74,12 @@ export const auth = betterAuth({
       httpOnly: true,
     },
   },
+  plugins: [
+    username({
+      minUsernameLength: 3,
+      maxUsernameLength: 30,
+    }),
+  ],
 });
 
 export type Session = typeof auth.$Infer.Session.session;

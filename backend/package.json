@@ -32,7 +32,7 @@
     "tsx": "^4.20.6",
     "uuid": "^13.0.0",
     "winston": "^3.18.3",
-    "zod": "^4.1.13"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cls-hooked": "^4.3.9",

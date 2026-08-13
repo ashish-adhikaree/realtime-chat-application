@@ -6,11 +6,13 @@ import { errorHandler } from '@/middlewares/error';
 import { systemLogger } from '@/lib/utils/logger';
 import { toNodeHandler } from 'better-auth/node';
 import { createNamespace } from 'cls-hooked';
+import { initRealtime } from '@/lib/realtime';
 import cookieParser from 'cookie-parser';
+import ApiRouter from '@/routes';
 import { auth } from '@/lib/auth';
+import { createServer } from 'http';
 import express from 'express';
 import cors from 'cors';
-import TestRouter from './routes';
 
 const app = express();
 
@@ -22,7 +24,6 @@ app.use(
   cors({
     origin: (origin: any, callback: any) => {
       if (!origin) return callback(null, true);
-			console.log('CORS origin:', origin);
       if (frontendOrigins.includes(origin)) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
     },
@@ -43,10 +44,14 @@ app.use(
 
 app.use(attachSession);
 
-app.use(`${API_PREFIX}/test`, TestRouter);
+app.use(API_PREFIX, ApiRouter);
 
 app.use(errorHandler);
 
-app.listen(env.PORT, async () => {
+const server = createServer(app);
+
+initRealtime(server);
+
+server.listen(env.PORT, async () => {
   systemLogger.info(`Server is running on http://localhost:${env.PORT}`);
 });

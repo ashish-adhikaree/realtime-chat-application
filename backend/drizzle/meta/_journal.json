@@ -15,6 +15,20 @@
       "when": 1786207832371,
       "tag": "0001_aspiring_maestro",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786210480658,
+      "tag": "0002_fluffy_drax",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786635310180,
+      "tag": "0003_perfect_living_lightning",
+      "breakpoints": true
     }
   ]
 }

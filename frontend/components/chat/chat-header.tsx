@@ -1,93 +1,100 @@
+"use client";
+
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-    Call02Icon,
-    ComputerVideoCallIcon,
-    MoreVerticalIcon,
-} from "@hugeicons/core-free-icons";
-import {
-    Avatar,
-    AvatarFallback,
-    AvatarGroup,
-    AvatarImage,
-} from "@/components/ui/avatar";
+import { InformationCircleIcon, PinIcon, UserGroupIcon } from "@hugeicons/core-free-icons";
+import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
-import type { Conversation } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { initials } from "@/lib/format";
+import type { Conversation, ConversationDetail } from "@/lib/types";
 
-function statusLabel(conversation: Conversation) {
-    if (conversation.typing) return "Typing...";
-    if (conversation.online) return "Online";
-    return "Offline";
-}
+export function ChatHeader({
+    conversation,
+    detail,
+    onOpenInfo,
+    onTogglePin,
+}: {
+    conversation: Conversation;
+    detail: ConversationDetail | null;
+    onOpenInfo: () => void;
+    onTogglePin: () => void;
+}) {
+    const activeMembers = detail?.members.filter((member) => member.active) ?? [];
+    const subtitle =
+        conversation.type === "group"
+            ? `${activeMembers.length || conversation.memberCount} members`
+            : (activeMembers.find((member) => member.id === conversation.otherUserId)?.username ?? "Direct message");
 
-export function ChatHeader({ conversation }: { conversation: Conversation }) {
     return (
         <header className="bg-card px-4 py-2">
             <div className="flex items-center gap-3">
-                <Avatar>
-                    <AvatarImage src={conversation.avatar} />
-                    <AvatarFallback>{conversation.name.slice(0, 2)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                    <p className="font-medium">{conversation.name}</p>
-                    <p
-                        className={cn(
-                            "text-sm",
-                            conversation.typing ? "text-primary" : "text-muted-foreground"
-                        )}
-                    >
-                        {statusLabel(conversation)}
-                    </p>
-                </div>
-                {conversation.isGroup && conversation.memberAvatars && (
+                <button
+                    type="button"
+                    aria-label="Conversation details"
+                    onClick={onOpenInfo}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                    <Avatar>
+                        <AvatarImage src={conversation.image ?? undefined} />
+                        <AvatarFallback>
+                            {conversation.type === "group" ? (
+                                <HugeiconsIcon icon={UserGroupIcon} className="size-4" />
+                            ) : (
+                                initials(conversation.name)
+                            )}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                        <p className="truncate font-medium">{conversation.name}</p>
+                        <p className="truncate text-sm text-muted-foreground">
+                            {conversation.type === "group" || subtitle === "Direct message"
+                                ? subtitle
+                                : `@${subtitle}`}
+                        </p>
+                    </div>
+                </button>
+
+                {conversation.type === "group" && activeMembers.length > 1 && (
                     <AvatarGroup>
-                        {conversation.memberAvatars.slice(0, 4).map((src) => (
-                            <Avatar key={src} size="sm">
-                                <AvatarImage src={src} />
+                        {activeMembers.slice(0, 4).map((member) => (
+                            <Avatar key={member.id} size="sm">
+                                <AvatarImage src={member.image ?? undefined} />
+                                <AvatarFallback>{initials(member.name)}</AvatarFallback>
                             </Avatar>
                         ))}
                     </AvatarGroup>
                 )}
-                <TooltipProvider>
-                    <div className="flex items-center gap-1">
-                        <Tooltip>
-                            <TooltipTrigger render={<Button size="icon-sm" variant="ghost" />}>
-                                <HugeiconsIcon icon={Call02Icon} />
-                            </TooltipTrigger>
-                            <TooltipContent>Call</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger render={<Button size="icon-sm" variant="ghost" />}>
-                                <HugeiconsIcon icon={ComputerVideoCallIcon} />
-                            </TooltipTrigger>
-                            <TooltipContent>Video call</TooltipContent>
-                        </Tooltip>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger render={<Button size="icon-sm" variant="ghost" />}>
-                                <HugeiconsIcon icon={MoreVerticalIcon} />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem>View contact</DropdownMenuItem>
-                                <DropdownMenuItem>Mute notifications</DropdownMenuItem>
-                                <DropdownMenuItem variant="destructive">
-                                    Clear chat
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                </TooltipProvider>
+
+                <div className="flex items-center gap-1">
+                    <Tooltip>
+                        <TooltipTrigger
+                            render={
+                                <Button
+                                    size="icon-sm"
+                                    variant={conversation.pinned ? "secondary" : "ghost"}
+                                    aria-label={conversation.pinned ? "Unpin conversation" : "Pin conversation"}
+                                    onClick={onTogglePin}
+                                />
+                            }>
+                            <HugeiconsIcon icon={PinIcon} />
+                        </TooltipTrigger>
+                        <TooltipContent>{conversation.pinned ? "Unpin" : "Pin"}</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                        <TooltipTrigger
+                            render={
+                                <Button
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    aria-label={conversation.type === "group" ? "Group info" : "Contact info"}
+                                    onClick={onOpenInfo}
+                                />
+                            }>
+                            <HugeiconsIcon icon={InformationCircleIcon} />
+                        </TooltipTrigger>
+                        <TooltipContent>{conversation.type === "group" ? "Group info" : "Contact info"}</TooltipContent>
+                    </Tooltip>
+                </div>
             </div>
         </header>
     );

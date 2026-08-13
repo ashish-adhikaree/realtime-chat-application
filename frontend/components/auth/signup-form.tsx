@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn, signUp } from "@/lib/auth-client";
+import { USERNAME_PATTERN, slugifyUsername, suggestUsername } from "@/lib/username";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -12,9 +13,31 @@ import { Input } from "@/components/ui/input";
 export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
     const router = useRouter();
 
+    const [name, setName] = useState("");
+    const [username, setUsername] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [pending, setPending] = useState(false);
     const [googlePending, setGooglePending] = useState(false);
+
+    const usernameTouched = useRef(false);
+
+    useEffect(() => {
+        if (usernameTouched.current) return;
+
+        const trimmed = name.trim();
+        if (trimmed.length < 2) {
+            setUsername("");
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            suggestUsername(trimmed).then((suggestion) => {
+                if (!usernameTouched.current) setUsername(suggestion);
+            });
+        }, 400);
+
+        return () => clearTimeout(timer);
+    }, [name]);
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -22,19 +45,24 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
 
         const formData = new FormData(event.currentTarget);
         const password = String(formData.get("password"));
-        const confirmPassword = String(formData.get("confirm-password"));
 
-        if (password !== confirmPassword) {
+        if (password !== String(formData.get("confirm-password"))) {
             setError("Passwords do not match.");
+            return;
+        }
+
+        if (!USERNAME_PATTERN.test(username)) {
+            setError("Username must be 3-30 characters, using letters, numbers or underscores.");
             return;
         }
 
         setPending(true);
 
         const { error: signUpError } = await signUp.email({
-            name: String(formData.get("name")),
+            name: name.trim(),
             email: String(formData.get("email")),
             password,
+            username,
         });
 
         if (signUpError) {
@@ -73,7 +101,33 @@ export function SignupForm({ ...props }: React.ComponentProps<typeof Card>) {
                     <FieldGroup>
                         <Field>
                             <FieldLabel htmlFor="name">Full Name</FieldLabel>
-                            <Input id="name" name="name" type="text" placeholder="John Doe" required />
+                            <Input
+                                id="name"
+                                name="name"
+                                type="text"
+                                placeholder="John Doe"
+                                value={name}
+                                onChange={(event) => setName(event.currentTarget.value)}
+                                required
+                            />
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="username">Username</FieldLabel>
+                            <Input
+                                id="username"
+                                name="username"
+                                type="text"
+                                placeholder="johndoe"
+                                value={username}
+                                onChange={(event) => {
+                                    usernameTouched.current = true;
+                                    setUsername(slugifyUsername(event.currentTarget.value));
+                                }}
+                                required
+                            />
+                            <FieldDescription>
+                                Suggested from your name. People find you by this, and it must be unique.
+                            </FieldDescription>
                         </Field>
                         <Field>
                             <FieldLabel htmlFor="email">Email</FieldLabel>

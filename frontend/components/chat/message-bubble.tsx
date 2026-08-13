@@ -1,82 +1,195 @@
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Tick01Icon, TickDouble01Icon } from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { Message } from "@/lib/types";
+"use client";
 
-function renderContent(message: Message) {
-    const needle = message.mention ?? message.link?.label;
-    if (!needle || !message.content.includes(needle)) {
-        return message.content;
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Delete02Icon, File01Icon, SmileIcon } from "@hugeicons/core-free-icons";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatDuration, formatFileSize, formatMessageTime, initials } from "@/lib/format";
+import type { Attachment, Message } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "🎉", "😮", "🙏"];
+
+function AttachmentView({ attachment, isOwn }: { attachment: Attachment; isOwn: boolean }) {
+    if (!attachment.url) {
+        return (
+            <div className="flex items-center gap-2 rounded-lg bg-background/40 p-2 text-sm">
+                <HugeiconsIcon icon={File01Icon} className="size-4 shrink-0" />
+                <span className="truncate">{attachment.fileName ?? "Attachment unavailable"}</span>
+            </div>
+        );
     }
 
-    const [before, after] = message.content.split(needle);
-    const highlighted = message.mention ? (
-        <span className="font-medium text-primary">{needle}</span>
-    ) : (
-        <a
-            href={message.link!.url}
-            target="_blank"
-            rel="noreferrer"
-            className="underline underline-offset-2"
-        >
-            {needle}
-        </a>
-    );
+    if (attachment.mimeType.startsWith("image/")) {
+        return (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+                src={attachment.url}
+                alt={attachment.fileName ?? "Image"}
+                className="max-h-80 w-full rounded-lg object-cover"
+            />
+        );
+    }
+
+    if (attachment.mimeType.startsWith("video/")) {
+        return <video src={attachment.url} controls className="max-h-80 w-full rounded-lg" />;
+    }
+
+    if (attachment.mimeType.startsWith("audio/")) {
+        return (
+            <div className="flex min-w-56 flex-col gap-1">
+                <audio src={attachment.url} controls className="w-full" />
+                {attachment.durationMs && (
+                    <span className={cn("text-xs", isOwn ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                        {formatDuration(attachment.durationMs)}
+                    </span>
+                )}
+            </div>
+        );
+    }
 
     return (
-        <>
-            {before}
-            {highlighted}
-            {after}
-        </>
+        <a
+            href={attachment.url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 rounded-lg bg-background/40 p-2 text-sm hover:bg-background/60">
+            <HugeiconsIcon icon={File01Icon} className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{attachment.fileName ?? "File"}</span>
+            <span className="shrink-0 text-xs opacity-70">{formatFileSize(attachment.sizeBytes)}</span>
+        </a>
     );
 }
 
 export function MessageBubble({
     message,
+    isOwn,
     showSender,
+    replyTo,
+    onReact,
+    onRemoveReaction,
+    onDelete,
 }: {
     message: Message;
+    isOwn: boolean;
     showSender: boolean;
+    replyTo?: Message;
+    onReact: (emoji: string) => void;
+    onRemoveReaction: () => void;
+    onDelete: () => void;
 }) {
+    const myReaction = message.reactions.find((reaction) => reaction.reactedByMe);
+
     return (
-        <div className={cn("flex items-end gap-2", message.isOwn && "justify-end")}>
-            {!message.isOwn && (
+        <div className={cn("group flex items-end gap-2", isOwn && "flex-row-reverse")}>
+            {!isOwn && (
                 <Avatar size="sm" className={cn(!showSender && "invisible")}>
-                    <AvatarImage src={message.senderAvatar} />
-                    <AvatarFallback>{message.senderName.slice(0, 2)}</AvatarFallback>
+                    <AvatarImage src={message.senderImage ?? undefined} />
+                    <AvatarFallback>{initials(message.senderName ?? "?")}</AvatarFallback>
                 </Avatar>
             )}
-            <div className="flex max-w-[70%] flex-col gap-1">
-                {showSender && !message.isOwn && (
+
+            <div className={cn("flex max-w-[70%] flex-col gap-1", isOwn && "items-end")}>
+                {showSender && !isOwn && (
                     <span className="px-1 text-xs font-medium text-muted-foreground">
-                        {message.senderName}
+                        {message.senderName ?? "Deleted user"}
                     </span>
                 )}
+
                 <div
                     className={cn(
-                        "rounded-2xl px-3 py-2 text-sm",
-                        message.isOwn
+                        "flex flex-col gap-2 rounded-2xl px-3 py-2 text-sm",
+                        isOwn
                             ? "rounded-tr-md bg-primary text-primary-foreground"
                             : "rounded-tl-md bg-card text-card-foreground ring-1 ring-foreground/10"
+                    )}>
+                    {replyTo && (
+                        <div
+                            className={cn(
+                                "rounded-md border-l-2 px-2 py-1 text-xs",
+                                isOwn
+                                    ? "border-primary-foreground/50 bg-primary-foreground/10"
+                                    : "border-primary bg-muted"
+                            )}>
+                            <p className="font-medium">{replyTo.senderName ?? "Deleted user"}</p>
+                            <p className="truncate opacity-80">{replyTo.content ?? "Attachment"}</p>
+                        </div>
                     )}
-                >
-                    {renderContent(message)}
+
+                    {message.deletedAt ? (
+                        <span className="italic opacity-70">This message was deleted</span>
+                    ) : (
+                        <>
+                            {message.attachments.map((attachment) => (
+                                <AttachmentView key={attachment.id} attachment={attachment} isOwn={isOwn} />
+                            ))}
+                            {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+                        </>
+                    )}
                 </div>
+
+                {message.reactions.length > 0 && (
+                    <div className={cn("flex flex-wrap gap-1", isOwn && "justify-end")}>
+                        {message.reactions.map((reaction) => (
+                            <Tooltip key={reaction.emoji}>
+                                <TooltipTrigger
+                                    render={
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                reaction.reactedByMe ? onRemoveReaction() : onReact(reaction.emoji)
+                                            }
+                                            className={cn(
+                                                "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 transition-colors",
+                                                reaction.reactedByMe
+                                                    ? "bg-primary/15 ring-primary"
+                                                    : "bg-card ring-foreground/10 hover:bg-accent"
+                                            )}
+                                        />
+                                    }>
+                                    <span>{reaction.emoji}</span>
+                                    <span className="tabular-nums">{reaction.count}</span>
+                                </TooltipTrigger>
+                                <TooltipContent>{reaction.users.join(", ")}</TooltipContent>
+                            </Tooltip>
+                        ))}
+                    </div>
+                )}
+
                 <div
                     className={cn(
                         "flex items-center gap-1 px-1 text-xs text-muted-foreground",
-                        message.isOwn && "justify-end"
-                    )}
-                >
-                    <span>{message.timestamp}</span>
-                    {message.isOwn && message.status && (
-                        <HugeiconsIcon
-                            icon={message.status === "sent" ? Tick01Icon : TickDouble01Icon}
-                            className={cn("size-3.5", message.status === "read" && "text-primary")}
-                        />
-                    )}
+                        isOwn && "flex-row-reverse"
+                    )}>
+                    <span>{formatMessageTime(message.createdAt)}</span>
+                    {message.editedAt && <span>edited</span>}
+
+                    <div className="flex items-center opacity-0 transition-opacity group-hover:opacity-100">
+                        <Popover>
+                            <PopoverTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Add reaction" />}>
+                                <HugeiconsIcon icon={SmileIcon} className="size-3.5" />
+                            </PopoverTrigger>
+                            <PopoverContent className="flex w-auto gap-1 p-1">
+                                {QUICK_REACTIONS.map((emoji) => (
+                                    <Button
+                                        key={emoji}
+                                        size="icon-sm"
+                                        variant={myReaction?.emoji === emoji ? "secondary" : "ghost"}
+                                        onClick={() => onReact(emoji)}>
+                                        {emoji}
+                                    </Button>
+                                ))}
+                            </PopoverContent>
+                        </Popover>
+
+                        {isOwn && !message.deletedAt && (
+                            <Button size="icon-sm" variant="ghost" aria-label="Delete message" onClick={onDelete}>
+                                <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

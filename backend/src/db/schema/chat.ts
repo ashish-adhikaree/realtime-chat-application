@@ -53,8 +53,8 @@ export const userProfile = pgTable('user_profile', {
   avatarKey: text('avatar_key'),
   nonContactPolicy: nonContactPolicyEnum('non_contact_policy').default('request').notNull(),
   allowGroupInvitesFromNonContacts: boolean('allow_group_invites_from_non_contacts').default(true).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at')
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
@@ -71,8 +71,8 @@ export const contact = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     alias: text('alias'),
     favorite: boolean('favorite').default(false).notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -93,7 +93,7 @@ export const block = pgTable(
     blockedId: text('blocked_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.blockerId, table.blockedId] }),
@@ -108,6 +108,7 @@ export const conversation = pgTable(
     id: text('id').primaryKey(),
     type: conversationTypeEnum('type').notNull(),
     name: text('name'),
+    description: text('description'),
     imageKey: text('image_key'),
     dmKey: text('dm_key'),
     createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
@@ -115,9 +116,9 @@ export const conversation = pgTable(
     onlyAdminsCanAddMembers: boolean('only_admins_can_add_members').default(false).notNull(),
     lastSeq: bigint('last_seq', { mode: 'number' }).default(0).notNull(),
     lastMessageSeq: bigint('last_message_seq', { mode: 'number' }),
-    lastMessageAt: timestamp('last_message_at'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -142,13 +143,13 @@ export const conversationMember = pgTable(
     role: memberRoleEnum('role').default('member').notNull(),
     historyVisibleFromSeq: bigint('history_visible_from_seq', { mode: 'number' }).default(0).notNull(),
     invitedBy: text('invited_by').references(() => user.id, { onDelete: 'set null' }),
-    joinedAt: timestamp('joined_at').defaultNow().notNull(),
-    leftAt: timestamp('left_at'),
-    pinnedAt: timestamp('pinned_at'),
-    archivedAt: timestamp('archived_at'),
-    mutedUntil: timestamp('muted_until'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
+    joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow().notNull(),
+    leftAt: timestamp('left_at', { withTimezone: true }),
+    pinnedAt: timestamp('pinned_at', { withTimezone: true }),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    mutedUntil: timestamp('muted_until', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -175,9 +176,9 @@ export const message = pgTable(
     replyToId: text('reply_to_id').references((): AnyPgColumn => message.id, { onDelete: 'set null' }),
     systemEvent: systemEventTypeEnum('system_event'),
     metadata: jsonb('metadata').$type<MessageMetadata>(),
-    editedAt: timestamp('edited_at'),
-    deletedAt: timestamp('deleted_at'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    editedAt: timestamp('edited_at', { withTimezone: true }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex('message_conversationId_seq_idx').on(table.conversationId, table.seq),
@@ -203,7 +204,7 @@ export const messageAttachment = pgTable(
     height: integer('height'),
     durationMs: integer('duration_ms'),
     thumbnailKey: text('thumbnail_key'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex('message_attachment_messageId_position_idx').on(table.messageId, table.position),
@@ -221,8 +222,8 @@ export const messageReaction = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     emoji: text('emoji').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
       .defaultNow()
       .$onUpdate(() => new Date())
       .notNull(),
@@ -247,8 +248,8 @@ export const conversationRequest = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     state: requestStateEnum('state').default('pending').notNull(),
     allowedThroughSeq: bigint('allowed_through_seq', { mode: 'number' }).default(0).notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    respondedAt: timestamp('responded_at'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    respondedAt: timestamp('responded_at', { withTimezone: true }),
   },
   (table) => [
     index('conversation_request_recipientId_state_idx').on(table.recipientId, table.state),

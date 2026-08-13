@@ -29,9 +29,14 @@ export type ConversationSummary = {
   blocked: boolean;
 };
 
-function previewFor(row: { type: string | null; content: string | null; senderName: string | null } | undefined) {
+function previewFor(
+  row:
+    | { type: string | null; content: string | null; senderName: string | null; deletedAt?: Date | null }
+    | undefined
+) {
   if (!row) return null;
   if (row.type === 'hidden') return 'Message hidden';
+  if (row.deletedAt) return 'This message was deleted';
   if (row.type === 'system') return 'Updated the group';
   if (row.type && row.type !== 'text') return row.type.charAt(0).toUpperCase() + row.type.slice(1);
   return row.content;
@@ -99,6 +104,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
       content: message.content,
       senderId: message.senderId,
       senderName: user.name,
+      deletedAt: message.deletedAt,
     })
     .from(message)
     .innerJoin(
@@ -106,7 +112,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
       and(eq(conversation.id, message.conversationId), eq(conversation.lastMessageSeq, message.seq))
     )
     .leftJoin(user, eq(user.id, message.senderId))
-    .where(and(inArray(message.conversationId, ids), isNull(message.deletedAt)));
+    .where(inArray(message.conversationId, ids));
 
   const blockedBy = new Set(
     (await db.select({ blockerId: block.blockerId }).from(block).where(eq(block.blockedId, viewerId))).map(

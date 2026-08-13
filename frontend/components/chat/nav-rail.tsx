@@ -80,21 +80,6 @@ export function NavRail({
                 <Tooltip>
                     <TooltipTrigger
                         render={
-                            <span
-                                className={cn(
-                                    "size-2 rounded-full transition-colors",
-                                    connected ? "bg-primary" : "bg-muted-foreground"
-                                )}
-                            />
-                        }>
-                        <span className="sr-only">{connected ? "Connected" : "Reconnecting"}</span>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">{connected ? "Live" : "Reconnecting..."}</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                    <TooltipTrigger
-                        render={
                             <Button size="icon" variant="ghost" aria-label="Settings" onClick={onOpenSettings} />
                         }>
                         <HugeiconsIcon icon={Settings01Icon} />

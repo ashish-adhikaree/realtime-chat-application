@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Real Time Chat Application",
+    title: "PingMe",
     description: "A real-time chat application built with Next.js, React, and WebSockets.",
 };
 

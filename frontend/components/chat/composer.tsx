@@ -98,8 +98,10 @@ export function Composer({
                 multiple
                 hidden
                 onChange={(event) => {
-                    setFiles((current) => [...current, ...Array.from(event.currentTarget.files ?? [])].slice(0, 10));
-                    event.currentTarget.value = "";
+                    const input = event.currentTarget;
+                    const picked = Array.from(input.files ?? []);
+                    setFiles((current) => [...current, ...picked].slice(0, 10));
+                    input.value = "";
                 }}
             />
         </div>

@@ -2,7 +2,7 @@ import { block, contact, conversationRequest, message, messageAttachment, messag
 import { appendMessage, assertActiveMember, getConversationRow } from '@/services/core';
 import { CustomError, NotFoundError, ValidationError } from '@/middlewares/error';
 import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
-import { resolveMediaUrl } from '@/lib/storage';
+import { resolveDownloadUrl, resolveMediaUrl } from '@/lib/storage';
 import { user } from '@/db/schema/auth';
 import { createId } from '@/lib/id';
 import { emitToConversation, emitToUsers } from '@/lib/realtime';
@@ -150,6 +150,7 @@ async function serializeMessages(rows: Awaited<ReturnType<typeof fetchMessageRow
             .map(async (a) => ({
               id: a.id,
               url: await resolveMediaUrl(a.objectKey),
+              downloadUrl: await resolveDownloadUrl(a.objectKey, a.fileName),
               thumbnailUrl: await resolveMediaUrl(a.thumbnailKey),
               mimeType: a.mimeType,
               sizeBytes: a.sizeBytes,

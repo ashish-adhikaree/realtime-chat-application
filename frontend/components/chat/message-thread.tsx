@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MessageBubble } from "@/components/chat/message-bubble";
+import { MediaLightbox, type MediaItem } from "@/components/chat/media-lightbox";
 import { describeSystemMessage, formatDayDivider, isSameDay } from "@/lib/format";
 import type { ConversationMember, Message } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+const RUN_WINDOW_MS = 5 * 60 * 1000;
 
 function Divider({ label }: { label: string }) {
     return (
@@ -42,7 +46,29 @@ export function MessageThread({
     onDelete: (messageId: string) => void;
 }) {
     const bottomRef = useRef<HTMLDivElement>(null);
+    const [openMediaId, setOpenMediaId] = useState<string | null>(null);
     const lastSeq = messages[messages.length - 1]?.seq;
+
+    const mediaItems = useMemo<MediaItem[]>(
+        () =>
+            messages.flatMap((message) =>
+                message.attachments
+                    .filter(
+                        (attachment) =>
+                            attachment.mimeType.startsWith("image/") || attachment.mimeType.startsWith("video/")
+                    )
+                    .map((attachment) => ({
+                        id: attachment.id,
+                        url: attachment.url,
+                        downloadUrl: attachment.downloadUrl,
+                        mimeType: attachment.mimeType,
+                        fileName: attachment.fileName,
+                        senderName: message.senderName,
+                        createdAt: message.createdAt,
+                    }))
+            ),
+        [messages]
+    );
 
     const nameById = useMemo(() => new Map(members.map((member) => [member.id, member.name])), [members]);
     const messageById = useMemo(() => new Map(messages.map((message) => [message.id, message])), [messages]);
@@ -75,9 +101,9 @@ export function MessageThread({
 
     return (
         <ScrollArea className="min-h-0 flex-1">
-            <div className="flex flex-col gap-3 p-4">
+            <div className="flex flex-col p-4">
                 {hasMore && (
-                    <div className="flex justify-center">
+                    <div className="flex justify-center pb-2">
                         <Button variant="ghost" size="sm" onClick={onLoadMore} disabled={loadingMore}>
                             {loadingMore ? "Loading..." : "Load earlier messages"}
                         </Button>
@@ -90,18 +116,28 @@ export function MessageThread({
 
                     if (message.type === "system") {
                         return (
-                            <div key={message.id} className="flex flex-col gap-3">
+                            <div key={message.id} className="flex flex-col gap-2 py-1.5">
                                 {showDivider && <Divider label={formatDayDivider(message.createdAt)} />}
                                 <Divider label={describeSystemMessage(message, nameById)} />
                             </div>
                         );
                     }
 
+                    const withinRunWindow =
+                        previous !== undefined &&
+                        new Date(message.createdAt).getTime() - new Date(previous.createdAt).getTime() <
+                            RUN_WINDOW_MS;
+
                     const showSender =
-                        !previous || previous.senderId !== message.senderId || previous.type === "system";
+                        !previous ||
+                        previous.senderId !== message.senderId ||
+                        previous.type === "system" ||
+                        !withinRunWindow;
 
                     return (
-                        <div key={message.id} className="flex flex-col gap-3">
+                        <div
+                            key={message.id}
+                            className={cn("flex flex-col", showDivider ? "pt-2" : showSender ? "mt-3" : "mt-1")}>
                             {showDivider && <Divider label={formatDayDivider(message.createdAt)} />}
                             <MessageBubble
                                 message={message}
@@ -112,6 +148,7 @@ export function MessageThread({
                                 onReact={(emoji) => onReact(message.id, emoji)}
                                 onRemoveReaction={() => onRemoveReaction(message.id)}
                                 onDelete={() => onDelete(message.id)}
+                                onOpenMedia={setOpenMediaId}
                             />
                         </div>
                     );
@@ -119,6 +156,8 @@ export function MessageThread({
 
                 <div ref={bottomRef} />
             </div>
+
+            <MediaLightbox items={mediaItems} openId={openMediaId} onOpenChange={setOpenMediaId} />
         </ScrollArea>
     );
 }

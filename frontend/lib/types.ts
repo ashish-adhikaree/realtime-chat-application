@@ -99,6 +99,7 @@ export type ConversationDetail = {
 export type Attachment = {
     id: string;
     url: string | null;
+    downloadUrl: string | null;
     thumbnailUrl: string | null;
     mimeType: string;
     sizeBytes: number;

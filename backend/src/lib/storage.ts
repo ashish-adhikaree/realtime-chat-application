@@ -76,10 +76,64 @@ export async function createUploadUrl(purpose: UploadPurpose, ownerId: string, m
   return { objectKey, uploadUrl, expiresIn: UPLOAD_URL_TTL };
 }
 
-export async function getDownloadUrl(objectKey: string) {
-  return getSignedUrl(getClient(), new GetObjectCommand({ Bucket: env.S3_BUCKET_NAME!, Key: objectKey }), {
-    expiresIn: DOWNLOAD_URL_TTL,
+const DOWNLOAD_URL_CACHE_LIMIT = 5000;
+const DOWNLOAD_URL_REFRESH_MARGIN = 5 * 60 * 1000;
+
+const downloadUrlCache = new Map<string, { url: string; refreshAt: number }>();
+
+function pruneDownloadUrlCache() {
+  const now = Date.now();
+
+  for (const [key, entry] of downloadUrlCache) {
+    if (entry.refreshAt <= now) downloadUrlCache.delete(key);
+  }
+
+  while (downloadUrlCache.size > DOWNLOAD_URL_CACHE_LIMIT) {
+    const oldest = downloadUrlCache.keys().next().value;
+    if (oldest === undefined) break;
+    downloadUrlCache.delete(oldest);
+  }
+}
+
+function attachmentDisposition(fileName: string) {
+  const safe = fileName.replace(/["\\]/g, '').slice(0, 200);
+  return `attachment; filename="${safe}"; filename*=UTF-8''${encodeURIComponent(safe)}`;
+}
+
+export async function getDownloadUrl(objectKey: string, downloadAs?: string) {
+  const cacheKey = downloadAs ? `${objectKey}::attachment` : objectKey;
+  const cached = downloadUrlCache.get(cacheKey);
+
+  if (cached && cached.refreshAt > Date.now()) return cached.url;
+
+  const url = await getSignedUrl(
+    getClient(),
+    new GetObjectCommand({
+      Bucket: env.S3_BUCKET_NAME!,
+      Key: objectKey,
+      ...(downloadAs ? { ResponseContentDisposition: attachmentDisposition(downloadAs) } : {}),
+    }),
+    { expiresIn: DOWNLOAD_URL_TTL }
+  );
+
+  downloadUrlCache.set(cacheKey, {
+    url,
+    refreshAt: Date.now() + DOWNLOAD_URL_TTL * 1000 - DOWNLOAD_URL_REFRESH_MARGIN,
   });
+
+  pruneDownloadUrlCache();
+
+  return url;
+}
+
+export async function resolveDownloadUrl(objectKey: string | null | undefined, fileName?: string | null) {
+  if (!objectKey || !isConfigured) return null;
+
+  try {
+    return await getDownloadUrl(objectKey, fileName ?? objectKey.split('/').pop() ?? 'download');
+  } catch {
+    return null;
+  }
 }
 
 export async function resolveMediaUrl(objectKey: string | null | undefined) {

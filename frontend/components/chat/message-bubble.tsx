@@ -14,7 +14,17 @@ import { cn } from "@/lib/utils";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "🎉", "😮", "🙏"];
 
-function AttachmentView({ attachment, isOwn }: { attachment: Attachment; isOwn: boolean }) {
+function AttachmentView({
+    attachment,
+    isOwn,
+    single,
+    onOpen,
+}: {
+    attachment: Attachment;
+    isOwn: boolean;
+    single: boolean;
+    onOpen?: () => void;
+}) {
     if (!attachment.url) {
         return (
             <div className="flex items-center gap-2 rounded-lg bg-background/40 p-2 text-sm">
@@ -24,19 +34,37 @@ function AttachmentView({ attachment, isOwn }: { attachment: Attachment; isOwn: 
         );
     }
 
-    if (attachment.mimeType.startsWith("image/")) {
-        return (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-                src={attachment.url}
-                alt={attachment.fileName ?? "Image"}
-                className="max-h-80 w-full rounded-lg object-cover"
-            />
-        );
-    }
+    const isImage = attachment.mimeType.startsWith("image/");
+    const isVideo = attachment.mimeType.startsWith("video/");
 
-    if (attachment.mimeType.startsWith("video/")) {
-        return <video src={attachment.url} controls className="max-h-80 w-full rounded-lg" />;
+    if (isImage || isVideo) {
+        return (
+            <button
+                type="button"
+                onClick={onOpen}
+                aria-label={`Open ${attachment.fileName ?? (isVideo ? "video" : "image")}`}
+                className={cn(
+                    "relative aspect-square overflow-hidden rounded-lg bg-muted transition-opacity hover:opacity-90",
+                    single ? "w-60" : "w-full"
+                )}>
+                {isImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                        src={attachment.url}
+                        alt={attachment.fileName ?? "Image"}
+                        loading="lazy"
+                        className="size-full object-cover"
+                    />
+                ) : (
+                    <>
+                        <video src={attachment.url} preload="metadata" className="size-full object-cover" />
+                        <span className="absolute inset-0 flex items-center justify-center">
+                            <span className="rounded-full bg-background/70 px-3 py-1 text-xs font-medium">Play</span>
+                        </span>
+                    </>
+                )}
+            </button>
+        );
     }
 
     if (attachment.mimeType.startsWith("audio/")) {
@@ -54,7 +82,8 @@ function AttachmentView({ attachment, isOwn }: { attachment: Attachment; isOwn: 
 
     return (
         <a
-            href={attachment.url}
+            href={attachment.downloadUrl ?? attachment.url}
+            download={attachment.fileName ?? undefined}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-2 rounded-lg bg-background/40 p-2 text-sm hover:bg-background/60">
@@ -74,6 +103,7 @@ export function MessageBubble({
     onReact,
     onRemoveReaction,
     onDelete,
+    onOpenMedia,
 }: {
     message: Message;
     isOwn: boolean;
@@ -83,32 +113,34 @@ export function MessageBubble({
     onReact: (emoji: string) => void;
     onRemoveReaction: () => void;
     onDelete: () => void;
+    onOpenMedia?: (attachmentId: string) => void;
 }) {
     const [reactionsOpen, setReactionsOpen] = useState(false);
     const myReaction = message.reactions.find((reaction) => reaction.reactedByMe);
 
     return (
-        <div className={cn("group flex items-end gap-2", isOwn && "flex-row-reverse")}>
+        <div className={cn("group flex items-start gap-2", isOwn && "flex-row-reverse")}>
             {!isOwn && (
-                <Avatar size="sm" className={cn(!showSender && "invisible")}>
+                <Avatar size="sm" className={cn("mt-0.5", !showSender && "invisible")}>
                     <AvatarImage src={message.senderImage ?? undefined} />
                     <AvatarFallback>{initials(message.senderName ?? "?")}</AvatarFallback>
                 </Avatar>
             )}
 
-            <div className={cn("flex max-w-[70%] flex-col gap-1", isOwn && "items-end")}>
+            <div className={cn("flex max-w-[70%] flex-col", isOwn && "items-end")}>
                 {showSender && !isOwn && (
-                    <span className="px-1 text-xs font-medium text-muted-foreground">
+                    <span className="mb-1.5 px-1 text-xs font-medium text-muted-foreground">
                         {message.senderName ?? "Deleted user"}
                     </span>
                 )}
 
                 <div
                     className={cn(
-                        "flex flex-col gap-2 rounded-2xl px-3 py-2 text-sm",
+                        "flex flex-col gap-2 rounded-2xl px-2.5 py-1.5 text-sm",
                         isOwn
-                            ? "rounded-tr-md bg-primary text-primary-foreground"
-                            : "rounded-tl-md bg-card text-card-foreground ring-1 ring-foreground/10",
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-card text-card-foreground ring-1 ring-foreground/10",
+                        showSender && (isOwn ? "rounded-tr-md" : "rounded-tl-md"),
                         message.hiddenByBlock && "bg-muted text-muted-foreground ring-foreground/10"
                     )}>
                     {replyTo && (
@@ -132,16 +164,51 @@ export function MessageBubble({
                         <span className="italic opacity-70">This message was deleted</span>
                     ) : (
                         <>
-                            {message.attachments.map((attachment) => (
-                                <AttachmentView key={attachment.id} attachment={attachment} isOwn={isOwn} />
-                            ))}
-                            {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+                            {message.attachments.length > 0 && (
+                                <div
+                                    className={cn(
+                                        message.attachments.length > 1 && "grid w-60 grid-cols-2 gap-1"
+                                    )}>
+                                    {message.attachments.map((attachment) => (
+                                        <AttachmentView
+                                            key={attachment.id}
+                                            attachment={attachment}
+                                            isOwn={isOwn}
+                                            single={message.attachments.length === 1}
+                                            onOpen={() => onOpenMedia?.(attachment.id)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                            {message.content && (
+                                <p className="whitespace-pre-wrap break-words">
+                                    {message.content}
+                                    <span
+                                        className={cn(
+                                            "float-right ml-2 translate-y-1 text-[10px] leading-none",
+                                            isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
+                                        )}>
+                                        {message.editedAt && "edited "}
+                                        {formatMessageTime(message.createdAt)}
+                                    </span>
+                                </p>
+                            )}
                         </>
+                    )}
+
+                    {!message.content && (
+                        <span
+                            className={cn(
+                                "self-end text-[10px] leading-none",
+                                isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
+                            )}>
+                            {formatMessageTime(message.createdAt)}
+                        </span>
                     )}
                 </div>
 
                 {message.reactions.length > 0 && (
-                    <div className={cn("flex flex-wrap gap-1", isOwn && "justify-end")}>
+                    <div className={cn("mt-1 flex flex-wrap gap-1", isOwn && "justify-end")}>
                         {message.reactions.map((reaction) => (
                             <Tooltip key={reaction.emoji}>
                                 <TooltipTrigger
@@ -169,43 +236,35 @@ export function MessageBubble({
                     </div>
                 )}
 
-                <div
-                    className={cn(
-                        "flex items-center gap-1 px-1 text-xs text-muted-foreground",
-                        isOwn && "flex-row-reverse"
-                    )}>
-                    <span>{formatMessageTime(message.createdAt)}</span>
-                    {message.editedAt && <span>edited</span>}
+            </div>
 
-                    <div
-                        className={cn(
-                            "flex items-center opacity-0 transition-opacity group-hover:opacity-100",
-                            message.hiddenByBlock && "hidden"
-                        )}>
-                        <Popover>
-                            <PopoverTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Add reaction" />}>
-                                <HugeiconsIcon icon={SmileIcon} className="size-3.5" />
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto flex-row gap-1 p-1">
-                                {QUICK_REACTIONS.map((emoji) => (
-                                    <Button
-                                        key={emoji}
-                                        size="icon-sm"
-                                        variant={myReaction?.emoji === emoji ? "secondary" : "ghost"}
-                                        onClick={() => onReact(emoji)}>
-                                        {emoji}
-                                    </Button>
-                                ))}
-                            </PopoverContent>
-                        </Popover>
-
-                        {isOwn && !message.deletedAt && (
-                            <Button size="icon-sm" variant="ghost" aria-label="Delete message" onClick={onDelete}>
-                                <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
+            <div
+                className={cn(
+                    "flex items-center self-center opacity-0 transition-opacity group-hover:opacity-100",
+                    message.hiddenByBlock && "hidden"
+                )}>
+                <Popover>
+                    <PopoverTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Add reaction" />}>
+                        <HugeiconsIcon icon={SmileIcon} className="size-3.5" />
+                    </PopoverTrigger>
+                    <PopoverContent side={isOwn ? "left" : "right"} align="center" className="w-auto flex-row gap-1 p-1">
+                        {QUICK_REACTIONS.map((emoji) => (
+                            <Button
+                                key={emoji}
+                                size="icon-sm"
+                                variant={myReaction?.emoji === emoji ? "secondary" : "ghost"}
+                                onClick={() => onReact(emoji)}>
+                                {emoji}
                             </Button>
-                        )}
-                    </div>
-                </div>
+                        ))}
+                    </PopoverContent>
+                </Popover>
+
+                {isOwn && !message.deletedAt && (
+                    <Button size="icon-sm" variant="ghost" aria-label="Delete message" onClick={onDelete}>
+                        <HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
+                    </Button>
+                )}
             </div>
 
             <ReactionDetailsSheet

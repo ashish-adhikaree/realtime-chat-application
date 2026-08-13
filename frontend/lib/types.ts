@@ -15,7 +15,10 @@ export type SystemEvent =
     | "member_left"
     | "role_changed"
     | "group_renamed"
-    | "group_image_changed";
+    | "group_image_changed"
+    | "request_declined"
+    | "request_reopened"
+    | "request_accepted";
 
 export type Profile = {
     id: string;
@@ -62,6 +65,7 @@ export type Conversation = {
     memberAvatars: string[];
     requestState: RequestState | null;
     isRequestRecipient: boolean;
+    requestAwaitingReply: boolean;
     favorite: boolean;
     blocked: boolean;
 };
@@ -76,6 +80,7 @@ export type ConversationMember = {
     active: boolean;
     favorite: boolean;
     isContact: boolean;
+    blocked: boolean;
 };
 
 export type ConversationDetail = {
@@ -103,10 +108,17 @@ export type Attachment = {
     durationMs: number | null;
 };
 
+export type ReactionUser = {
+    id: string;
+    name: string;
+    image: string | null;
+    reactedAt: string;
+};
+
 export type Reaction = {
     emoji: string;
     count: number;
-    users: string[];
+    users: ReactionUser[];
     reactedByMe: boolean;
 };
 
@@ -134,6 +146,7 @@ export type Message = {
     editedAt: string | null;
     deletedAt: string | null;
     createdAt: string;
+    hiddenByBlock: boolean;
     attachments: Attachment[];
     reactions: Reaction[];
 };

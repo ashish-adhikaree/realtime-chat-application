@@ -41,6 +41,12 @@ async function serializeMessages(rows: Awaited<ReturnType<typeof fetchMessageRow
 
   const ids = rows.map((r) => r.id);
 
+  const blockedBy = new Set(
+    (await db.select({ blockerId: block.blockerId }).from(block).where(eq(block.blockedId, viewerId))).map(
+      (row) => row.blockerId
+    )
+  );
+
   const attachments = await db.select().from(messageAttachment).where(inArray(messageAttachment.messageId, ids));
 
   const reactions = await db
@@ -49,9 +55,13 @@ async function serializeMessages(rows: Awaited<ReturnType<typeof fetchMessageRow
       userId: messageReaction.userId,
       emoji: messageReaction.emoji,
       name: user.name,
+      image: user.image,
+      avatarKey: userProfile.avatarKey,
+      reactedAt: messageReaction.updatedAt,
     })
     .from(messageReaction)
     .innerJoin(user, eq(user.id, messageReaction.userId))
+    .leftJoin(userProfile, eq(userProfile.userId, messageReaction.userId))
     .where(inArray(messageReaction.messageId, ids));
 
   const attachmentsByMessage = new Map<string, typeof attachments>();
@@ -73,18 +83,49 @@ async function serializeMessages(rows: Awaited<ReturnType<typeof fetchMessageRow
       const rawAttachments = attachmentsByMessage.get(row.id) ?? [];
       const rawReactions = reactionsByMessage.get(row.id) ?? [];
 
-      const grouped = new Map<string, { emoji: string; count: number; users: string[]; reactedByMe: boolean }>();
+      type ReactionUser = { id: string; name: string; image: string | null; reactedAt: Date };
+      const grouped = new Map<string, { emoji: string; count: number; users: ReactionUser[]; reactedByMe: boolean }>();
+
       for (const reaction of rawReactions) {
         const entry = grouped.get(reaction.emoji) ?? {
           emoji: reaction.emoji,
           count: 0,
-          users: [],
+          users: [] as ReactionUser[],
           reactedByMe: false,
         };
         entry.count += 1;
-        entry.users.push(reaction.name);
+        entry.users.push({
+          id: reaction.userId,
+          name: reaction.name,
+          image: (await resolveMediaUrl(reaction.avatarKey)) ?? reaction.image,
+          reactedAt: reaction.reactedAt,
+        });
         if (reaction.userId === viewerId) entry.reactedByMe = true;
         grouped.set(reaction.emoji, entry);
+      }
+
+      const hiddenByBlock = Boolean(row.senderId && blockedBy.has(row.senderId) && row.type !== 'system');
+
+      if (hiddenByBlock) {
+        return {
+          id: row.id,
+          conversationId: row.conversationId,
+          seq: row.seq,
+          senderId: row.senderId,
+          senderName: row.senderName,
+          senderImage: (await resolveMediaUrl(row.senderAvatarKey)) ?? row.senderImage,
+          type: row.type,
+          content: null,
+          systemEvent: row.systemEvent,
+          metadata: null,
+          replyToId: null,
+          editedAt: null,
+          deletedAt: row.deletedAt,
+          createdAt: row.createdAt,
+          hiddenByBlock: true,
+          attachments: [],
+          reactions: [],
+        };
       }
 
       return {
@@ -96,6 +137,7 @@ async function serializeMessages(rows: Awaited<ReturnType<typeof fetchMessageRow
         senderImage: (await resolveMediaUrl(row.senderAvatarKey)) ?? row.senderImage,
         type: row.type,
         content: row.deletedAt ? null : row.content,
+        hiddenByBlock: false,
         systemEvent: row.systemEvent,
         metadata: row.metadata,
         replyToId: row.replyToId,
@@ -149,7 +191,9 @@ async function fetchMessageRows(conversationId: string, fromSeq: number, gatedTh
       and(
         eq(message.conversationId, conversationId),
         sql`${message.seq} >= ${fromSeq}`,
-        gatedThrough === null ? sql`true` : sql`${message.seq} <= ${gatedThrough}`,
+        gatedThrough === null
+          ? sql`true`
+          : sql`(${message.seq} <= ${gatedThrough} or ${message.type} = 'system')`,
         before === undefined ? sql`true` : lt(message.seq, before)
       )
     )
@@ -169,7 +213,7 @@ export async function listMessages(viewerId: string, conversationId: string, bef
   };
 }
 
-type DirectGate = { openRequestFor?: string; acceptExisting?: boolean; reopenRequest?: boolean };
+type DirectGate = { openRequestFor?: string; acceptExisting?: boolean };
 
 async function resolveDirectGate(conversationId: string, senderId: string): Promise<DirectGate> {
   const row = await getConversationRow(conversationId);
@@ -211,16 +255,12 @@ async function resolveDirectGate(conversationId: string, senderId: string): Prom
 
   if (existingRequest) {
     if (existingRequest.requesterId === senderId) {
-      if (existingRequest.state === 'pending' && existingRequest.allowedThroughSeq > 0) {
+      if (existingRequest.state === 'pending') {
         throw new CustomError('You can only send one message until they reply to your request', 403);
       }
 
       if (existingRequest.state === 'declined') {
         throw new CustomError('Your message request was declined', 403);
-      }
-
-      if (existingRequest.state === 'pending') {
-        return { reopenRequest: true };
       }
     }
 
@@ -277,13 +317,6 @@ async function applyDirectGate(conversationId: string, senderId: string, gate: D
         allowedThroughSeq: seq,
       })
       .onConflictDoNothing();
-  }
-
-  if (gate.reopenRequest) {
-    await db
-      .update(conversationRequest)
-      .set({ allowedThroughSeq: seq })
-      .where(eq(conversationRequest.conversationId, conversationId));
   }
 
   if (gate.acceptExisting) {

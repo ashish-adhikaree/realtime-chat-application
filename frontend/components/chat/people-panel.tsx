@@ -133,7 +133,11 @@ export function ContactsPanel({
                             contact.favorite ? "Removed from favourites" : "Added to favourites"
                         )
                     }>
-                    <HugeiconsIcon icon={StarIcon} className={cn(contact.favorite && "text-primary")} />
+                    <HugeiconsIcon
+                        icon={StarIcon}
+                        fill={contact.favorite ? "currentColor" : "none"}
+                        className={cn(contact.favorite && "text-primary")}
+                    />
                 </Button>
 
                 <Button size="sm" variant="outline" disabled={busy} onClick={() => onMessage(contact.id)}>

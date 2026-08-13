@@ -24,12 +24,14 @@ export type ConversationSummary = {
   memberAvatars: string[];
   requestState: 'pending' | 'accepted' | 'declined' | null;
   isRequestRecipient: boolean;
+  requestAwaitingReply: boolean;
   favorite: boolean;
   blocked: boolean;
 };
 
 function previewFor(row: { type: string | null; content: string | null; senderName: string | null } | undefined) {
   if (!row) return null;
+  if (row.type === 'hidden') return 'Message hidden';
   if (row.type === 'system') return 'Updated the group';
   if (row.type && row.type !== 'text') return row.type.charAt(0).toUpperCase() + row.type.slice(1);
   return row.content;
@@ -95,6 +97,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
       seq: message.seq,
       type: message.type,
       content: message.content,
+      senderId: message.senderId,
       senderName: user.name,
     })
     .from(message)
@@ -105,7 +108,18 @@ export async function listConversations(viewerId: string): Promise<ConversationS
     .leftJoin(user, eq(user.id, message.senderId))
     .where(and(inArray(message.conversationId, ids), isNull(message.deletedAt)));
 
-  const previewByConversation = new Map(previews.map((p) => [p.conversationId, p]));
+  const blockedBy = new Set(
+    (await db.select({ blockerId: block.blockerId }).from(block).where(eq(block.blockedId, viewerId))).map(
+      (row) => row.blockerId
+    )
+  );
+
+  const previewByConversation = new Map(
+    previews.map((p) => [
+      p.conversationId,
+      p.senderId && blockedBy.has(p.senderId) ? { ...p, type: 'hidden' as const, content: null } : p,
+    ])
+  );
 
   const othersByConversation = new Map<string, typeof others>();
   for (const row of others) {
@@ -150,6 +164,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
         memberAvatars: memberAvatars.filter((a): a is string => Boolean(a)),
         requestState: m.requestState,
         isRequestRecipient,
+        requestAwaitingReply: m.requestState === 'pending' && !isRequestRecipient,
         favorite: m.type === 'direct' && Boolean(counterpart?.favorite),
         blocked: m.type === 'direct' && Boolean(counterpart?.blockedId),
       };
@@ -174,11 +189,13 @@ export async function getConversationDetail(viewerId: string, conversationId: st
       alias: contact.alias,
       favorite: contact.favorite,
       contactOwner: contact.ownerId,
+      blockedId: block.blockedId,
     })
     .from(conversationMember)
     .innerJoin(user, eq(user.id, conversationMember.userId))
     .leftJoin(userProfile, eq(userProfile.userId, user.id))
     .leftJoin(contact, and(eq(contact.ownerId, viewerId), eq(contact.contactUserId, user.id)))
+    .leftJoin(block, and(eq(block.blockerId, viewerId), eq(block.blockedId, user.id)))
     .where(eq(conversationMember.conversationId, conversationId))
     .orderBy(sql`case when ${conversationMember.role} = 'admin' then 0 else 1 end`, user.name);
 
@@ -193,6 +210,7 @@ export async function getConversationDetail(viewerId: string, conversationId: st
       active: m.leftAt === null,
       favorite: Boolean(m.favorite),
       isContact: Boolean(m.contactOwner),
+      blocked: Boolean(m.blockedId),
     }))
   );
 
@@ -642,10 +660,14 @@ export async function respondToRequest(
 
     if (blocked) throw new CustomError('This user is not accepting your messages', 403);
 
-    await db
-      .update(conversationRequest)
-      .set({ state: 'pending', respondedAt: null, allowedThroughSeq: 0 })
-      .where(eq(conversationRequest.conversationId, conversationId));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(conversationRequest)
+        .set({ state: 'pending', respondedAt: null })
+        .where(eq(conversationRequest.conversationId, conversationId));
+
+      await appendSystemMessage(tx, conversationId, viewerId, 'request_reopened');
+    });
 
     await emitToConversation(conversationId, 'conversation:updated', { conversationId });
     return;
@@ -657,10 +679,19 @@ export async function respondToRequest(
 
   if (request.state === action_state(action)) return;
 
-  await db
-    .update(conversationRequest)
-    .set({ state: action === 'accept' ? 'accepted' : 'declined', respondedAt: new Date() })
-    .where(eq(conversationRequest.conversationId, conversationId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(conversationRequest)
+      .set({ state: action === 'accept' ? 'accepted' : 'declined', respondedAt: new Date() })
+      .where(eq(conversationRequest.conversationId, conversationId));
+
+    await appendSystemMessage(
+      tx,
+      conversationId,
+      viewerId,
+      action === 'accept' ? 'request_accepted' : 'request_declined'
+    );
+  });
 
   if (action === 'accept') {
     await db.insert(contact).values({ ownerId: viewerId, contactUserId: request.requesterId }).onConflictDoNothing();

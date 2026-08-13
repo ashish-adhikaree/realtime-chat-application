@@ -33,7 +33,7 @@ const EXTENSION_BY_MIME: Record<string, string> = {
 export const UPLOAD_URL_TTL = 60 * 5;
 export const DOWNLOAD_URL_TTL = 60 * 60;
 
-const isConfigured = Boolean(env.S3_BUCKET && env.AWS_REGION && env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY);
+const isConfigured = Boolean(env.S3_BUCKET_NAME && env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY);
 
 let client: S3Client | null = null;
 
@@ -44,12 +44,11 @@ function getClient() {
 
   if (!client) {
     client = new S3Client({
-      region: env.AWS_REGION!,
+      region: env.AWS_REGION,
       credentials: {
         accessKeyId: env.AWS_ACCESS_KEY_ID!,
         secretAccessKey: env.AWS_SECRET_ACCESS_KEY!,
       },
-      ...(env.S3_ENDPOINT ? { endpoint: env.S3_ENDPOINT, forcePathStyle: true } : {}),
     });
   }
 
@@ -70,7 +69,7 @@ export async function createUploadUrl(purpose: UploadPurpose, ownerId: string, m
 
   const uploadUrl = await getSignedUrl(
     getClient(),
-    new PutObjectCommand({ Bucket: env.S3_BUCKET!, Key: objectKey, ContentType: mimeType }),
+    new PutObjectCommand({ Bucket: env.S3_BUCKET_NAME!, Key: objectKey, ContentType: mimeType }),
     { expiresIn: UPLOAD_URL_TTL }
   );
 
@@ -78,7 +77,7 @@ export async function createUploadUrl(purpose: UploadPurpose, ownerId: string, m
 }
 
 export async function getDownloadUrl(objectKey: string) {
-  return getSignedUrl(getClient(), new GetObjectCommand({ Bucket: env.S3_BUCKET!, Key: objectKey }), {
+  return getSignedUrl(getClient(), new GetObjectCommand({ Bucket: env.S3_BUCKET_NAME!, Key: objectKey }), {
     expiresIn: DOWNLOAD_URL_TTL,
   });
 }
@@ -94,5 +93,5 @@ export async function resolveMediaUrl(objectKey: string | null | undefined) {
 }
 
 export async function deleteObject(objectKey: string) {
-  await getClient().send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET!, Key: objectKey }));
+  await getClient().send(new DeleteObjectCommand({ Bucket: env.S3_BUCKET_NAME!, Key: objectKey }));
 }

@@ -107,6 +107,7 @@ export function MessageThread({
                                 message={message}
                                 isOwn={message.senderId === currentUserId}
                                 showSender={showSender}
+                                currentUserId={currentUserId}
                                 replyTo={message.replyToId ? messageById.get(message.replyToId) : undefined}
                                 onReact={(emoji) => onReact(message.id, emoji)}
                                 onRemoveReaction={() => onRemoveReaction(message.id)}

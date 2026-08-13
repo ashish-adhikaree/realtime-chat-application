@@ -15,7 +15,10 @@ export type SystemEvent =
   | 'member_left'
   | 'role_changed'
   | 'group_renamed'
-  | 'group_image_changed';
+  | 'group_image_changed'
+  | 'request_declined'
+  | 'request_reopened'
+  | 'request_accepted';
 
 export async function getMembership(conversationId: string, userId: string, tx: Tx = db) {
   const [row] = await tx

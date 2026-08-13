@@ -5,7 +5,9 @@ import { Delete02Icon, File01Icon, SmileIcon } from "@hugeicons/core-free-icons"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ReactionDetailsSheet } from "@/components/chat/reaction-details-sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useState } from "react";
 import { formatDuration, formatFileSize, formatMessageTime, initials } from "@/lib/format";
 import type { Attachment, Message } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -68,6 +70,7 @@ export function MessageBubble({
     isOwn,
     showSender,
     replyTo,
+    currentUserId,
     onReact,
     onRemoveReaction,
     onDelete,
@@ -76,10 +79,12 @@ export function MessageBubble({
     isOwn: boolean;
     showSender: boolean;
     replyTo?: Message;
+    currentUserId: string;
     onReact: (emoji: string) => void;
     onRemoveReaction: () => void;
     onDelete: () => void;
 }) {
+    const [reactionsOpen, setReactionsOpen] = useState(false);
     const myReaction = message.reactions.find((reaction) => reaction.reactedByMe);
 
     return (
@@ -103,7 +108,8 @@ export function MessageBubble({
                         "flex flex-col gap-2 rounded-2xl px-3 py-2 text-sm",
                         isOwn
                             ? "rounded-tr-md bg-primary text-primary-foreground"
-                            : "rounded-tl-md bg-card text-card-foreground ring-1 ring-foreground/10"
+                            : "rounded-tl-md bg-card text-card-foreground ring-1 ring-foreground/10",
+                        message.hiddenByBlock && "bg-muted text-muted-foreground ring-foreground/10"
                     )}>
                     {replyTo && (
                         <div
@@ -118,7 +124,11 @@ export function MessageBubble({
                         </div>
                     )}
 
-                    {message.deletedAt ? (
+                    {message.hiddenByBlock ? (
+                        <span className="italic opacity-70">
+                            You can&apos;t see this message because you are blocked
+                        </span>
+                    ) : message.deletedAt ? (
                         <span className="italic opacity-70">This message was deleted</span>
                     ) : (
                         <>
@@ -138,9 +148,8 @@ export function MessageBubble({
                                     render={
                                         <button
                                             type="button"
-                                            onClick={() =>
-                                                reaction.reactedByMe ? onRemoveReaction() : onReact(reaction.emoji)
-                                            }
+                                            aria-label={`See who reacted ${reaction.emoji}`}
+                                            onClick={() => setReactionsOpen(true)}
                                             className={cn(
                                                 "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 transition-colors",
                                                 reaction.reactedByMe
@@ -152,7 +161,9 @@ export function MessageBubble({
                                     <span>{reaction.emoji}</span>
                                     <span className="tabular-nums">{reaction.count}</span>
                                 </TooltipTrigger>
-                                <TooltipContent>{reaction.users.join(", ")}</TooltipContent>
+                                <TooltipContent>
+                                    {reaction.users.map((person) => person.name).join(", ")}
+                                </TooltipContent>
                             </Tooltip>
                         ))}
                     </div>
@@ -166,12 +177,16 @@ export function MessageBubble({
                     <span>{formatMessageTime(message.createdAt)}</span>
                     {message.editedAt && <span>edited</span>}
 
-                    <div className="flex items-center opacity-0 transition-opacity group-hover:opacity-100">
+                    <div
+                        className={cn(
+                            "flex items-center opacity-0 transition-opacity group-hover:opacity-100",
+                            message.hiddenByBlock && "hidden"
+                        )}>
                         <Popover>
                             <PopoverTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Add reaction" />}>
                                 <HugeiconsIcon icon={SmileIcon} className="size-3.5" />
                             </PopoverTrigger>
-                            <PopoverContent className="flex w-auto gap-1 p-1">
+                            <PopoverContent className="w-auto flex-row gap-1 p-1">
                                 {QUICK_REACTIONS.map((emoji) => (
                                     <Button
                                         key={emoji}
@@ -192,6 +207,14 @@ export function MessageBubble({
                     </div>
                 </div>
             </div>
+
+            <ReactionDetailsSheet
+                open={reactionsOpen}
+                onOpenChange={setReactionsOpen}
+                reactions={message.reactions}
+                currentUserId={currentUserId}
+                onRemoveOwn={onRemoveReaction}
+            />
         </div>
     );
 }

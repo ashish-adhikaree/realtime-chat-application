@@ -54,7 +54,7 @@ function ConversationItem({
                 <div className="flex items-center justify-between gap-2">
                     <p className="flex min-w-0 items-center gap-1 truncate font-medium">
                         {conversation.favorite && conversation.type === "direct" && (
-                            <HugeiconsIcon icon={StarIcon} className="size-3.5 shrink-0 text-primary" />
+                            <HugeiconsIcon icon={StarIcon} fill="currentColor" className="size-3.5 shrink-0 text-primary" />
                         )}
                         <span className="truncate">{conversation.name}</span>
                     </p>

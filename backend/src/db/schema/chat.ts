@@ -30,6 +30,9 @@ export const systemEventTypeEnum = pgEnum('system_event_type', [
   'role_changed',
   'group_renamed',
   'group_image_changed',
+  'request_declined',
+  'request_reopened',
+  'request_accepted',
 ]);
 
 export const requestStateEnum = pgEnum('request_state', ['pending', 'accepted', 'declined']);

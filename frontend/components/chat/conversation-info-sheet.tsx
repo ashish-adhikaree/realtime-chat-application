@@ -227,6 +227,7 @@ export function ConversationInfoSheet({
                                                     {member.favorite && (
                                                         <HugeiconsIcon
                                                             icon={StarIcon}
+                                                            fill="currentColor"
                                                             className="size-3.5 shrink-0 text-primary"
                                                         />
                                                     )}
@@ -240,7 +241,8 @@ export function ConversationInfoSheet({
                                                 </p>
                                             </div>
 
-                                            {member.isContact && member.id !== currentUserId && (
+                                            {member.blocked && <Badge variant="outline">Blocked</Badge>}
+                                            {member.isContact && !member.blocked && member.id !== currentUserId && (
                                                 <Badge variant="outline">Contact</Badge>
                                             )}
                                             {member.role === "admin" && <Badge variant="secondary">Admin</Badge>}

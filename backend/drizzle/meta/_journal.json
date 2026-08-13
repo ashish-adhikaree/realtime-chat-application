@@ -29,6 +29,20 @@
       "when": 1786635310180,
       "tag": "0003_perfect_living_lightning",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786637087873,
+      "tag": "0004_abnormal_hardball",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786637284209,
+      "tag": "0005_repair_request_allowance",
+      "breakpoints": true
     }
   ]
 }

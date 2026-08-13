@@ -210,7 +210,7 @@ export function ChatView({ profile: initialProfile }: { profile: Profile }) {
                 action === "accept"
                     ? "Request accepted"
                     : action === "reopen"
-                      ? "You can send one more message"
+                      ? "Request sent again"
                       : "Request declined"
             );
             await Promise.all([refreshConversations(), refreshRequests(), reloadThread(conversationId)]);
@@ -249,8 +249,7 @@ export function ChatView({ profile: initialProfile }: { profile: Profile }) {
     }
 
     const pendingForMe = selected?.requestState === "pending" && selected.isRequestRecipient;
-    const awaitingReply =
-        selected?.requestState === "pending" && !selected.isRequestRecipient && (selected.lastMessageSeq ?? 0) > 0;
+    const awaitingReply = Boolean(selected?.requestAwaitingReply);
     const declinedByThem = selected?.requestState === "declined" && !selected.isRequestRecipient;
     const declinedByMe = selected?.requestState === "declined" && selected.isRequestRecipient;
     const isBlocked = Boolean(selected?.blocked);
@@ -419,7 +418,7 @@ export function ChatView({ profile: initialProfile }: { profile: Profile }) {
                             <>
                                 {awaitingReply && (
                                     <p className="border-t bg-muted px-4 py-3 text-center text-sm text-muted-foreground">
-                                        You can send one message until they reply to your request.
+                                        Message request sent. You can send another once {selected.name} replies.
                                     </p>
                                 )}
                                 <Composer disabled={awaitingReply} sending={sending} onSend={handleSend} />

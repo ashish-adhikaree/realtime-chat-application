@@ -77,6 +77,9 @@ export function describeSystemMessage(message: Message, nameById: Map<string, st
         role_changed: `${actor} made ${targetList} ${metadata.newRole === "admin" ? "an admin" : "a member"}`,
         group_renamed: `${actor} renamed the group to "${metadata.newName ?? ""}"`,
         group_image_changed: `${actor} changed the group image`,
+        request_declined: `${actor} declined the message request`,
+        request_reopened: `${actor} sent the message request again`,
+        request_accepted: `${actor} accepted the message request`,
     };
 
     return message.systemEvent ? describe[message.systemEvent] : "";

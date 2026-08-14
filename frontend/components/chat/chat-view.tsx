@@ -15,6 +15,7 @@ import { BlockedPanel, ContactsPanel } from "@/components/chat/people-panel";
 import { SettingsDialog } from "@/components/chat/settings-dialog";
 import { Button } from "@/components/ui/button";
 import { api, uploadFile } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth-client";
 import { useRealtime } from "@/lib/use-realtime";
 import type { Conversation, ConversationDetail, Message, MessageRequest, Profile } from "@/lib/types";
@@ -254,9 +255,12 @@ export function ChatView({ profile: initialProfile }: { profile: Profile }) {
     const declinedByMe = selected?.requestState === "declined" && selected.isRequestRecipient;
     const isBlocked = Boolean(selected?.blocked);
 
+    const hasSelection = Boolean(selected);
+
     return (
-        <div className="flex h-dvh items-stretch">
+        <div className="flex h-dvh flex-col items-stretch md:flex-row">
             <NavRail
+                hidden={hasSelection}
                 panel={panel}
                 onPanelChange={setPanel}
                 profile={profile}
@@ -272,6 +276,7 @@ export function ChatView({ profile: initialProfile }: { profile: Profile }) {
                 }}
             />
 
+            <div className={cn("flex min-h-0 w-full flex-1 md:w-auto md:flex-none", hasSelection && "hidden md:flex")}>
             {panel === "chats" && (
                 <ChatsPanel
                     conversations={conversations}
@@ -302,8 +307,9 @@ export function ChatView({ profile: initialProfile }: { profile: Profile }) {
                     onSuccess={(message) => toast.success(message)}
                 />
             )}
+            </div>
 
-            <aside className="flex min-h-0 flex-1 flex-col">
+            <aside className={cn("min-h-0 flex-1 flex-col", hasSelection ? "flex" : "hidden md:flex")}>
                 {!selected ? (
                     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
                         <p className="text-lg font-medium">No conversation selected</p>
@@ -317,6 +323,7 @@ export function ChatView({ profile: initialProfile }: { profile: Profile }) {
                         <ChatHeader
                             conversation={selected}
                             detail={detail}
+                            onBack={() => setSelectedId(null)}
                             onOpenInfo={() => setInfoOpen(true)}
                             onTogglePin={async () => {
                                 try {

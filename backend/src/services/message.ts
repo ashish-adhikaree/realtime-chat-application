@@ -41,10 +41,13 @@ async function serializeMessages(rows: Awaited<ReturnType<typeof fetchMessageRow
 
   const ids = rows.map((r) => r.id);
 
-  const blockedBy = new Set(
-    (await db.select({ blockerId: block.blockerId }).from(block).where(eq(block.blockedId, viewerId))).map(
-      (row) => row.blockerId
-    )
+  const blockedBy = new Map(
+    (
+      await db
+        .select({ blockerId: block.blockerId, blockedAt: block.createdAt })
+        .from(block)
+        .where(eq(block.blockedId, viewerId))
+    ).map((row) => [row.blockerId, row.blockedAt])
   );
 
   const attachments = await db.select().from(messageAttachment).where(inArray(messageAttachment.messageId, ids));
@@ -104,7 +107,8 @@ async function serializeMessages(rows: Awaited<ReturnType<typeof fetchMessageRow
         grouped.set(reaction.emoji, entry);
       }
 
-      const hiddenByBlock = Boolean(row.senderId && blockedBy.has(row.senderId) && row.type !== 'system');
+      const blockedAt = row.senderId ? blockedBy.get(row.senderId) : undefined;
+      const hiddenByBlock = Boolean(blockedAt && row.createdAt > blockedAt && row.type !== 'system');
 
       if (hiddenByBlock) {
         return {

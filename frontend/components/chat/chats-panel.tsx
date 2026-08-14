@@ -118,7 +118,7 @@ export function ChatsPanel({
     const rest = filtered.filter((conversation) => !conversation.pinned);
 
     return (
-        <div className="flex min-h-0 w-[360px] shrink-0 flex-col gap-3 border-r bg-card p-4">
+        <div className="flex min-h-0 w-full flex-1 flex-col gap-3 border-r bg-card p-4 md:w-[360px] md:flex-none md:shrink-0">
             <div className="flex items-center justify-between gap-2">
                 <h1 className="text-xl font-medium">Chats</h1>
                 <div className="flex items-center gap-1">

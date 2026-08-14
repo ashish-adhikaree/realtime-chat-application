@@ -167,7 +167,7 @@ export function ContactsPanel({
     }
 
     return (
-        <div className="flex min-h-0 w-[360px] shrink-0 flex-col gap-3 border-r bg-card p-4">
+        <div className="flex min-h-0 w-full flex-1 flex-col gap-3 border-r bg-card p-4 md:w-[360px] md:flex-none md:shrink-0">
             <div className="flex items-center justify-between gap-2">
                 <h1 className="text-xl font-medium">Contacts</h1>
                 <span className="text-sm text-muted-foreground">{contacts.length}</span>
@@ -272,7 +272,7 @@ export function BlockedPanel({
     }, [reloadKey]);
 
     return (
-        <div className="flex min-h-0 w-[360px] shrink-0 flex-col gap-3 border-r bg-card p-4">
+        <div className="flex min-h-0 w-full flex-1 flex-col gap-3 border-r bg-card p-4 md:w-[360px] md:flex-none md:shrink-0">
             <div className="flex items-center justify-between gap-2">
                 <h1 className="text-xl font-medium">Blocked</h1>
                 <span className="text-sm text-muted-foreground">{blocked.length}</span>

@@ -45,7 +45,7 @@ function AttachmentView({
                 aria-label={`Open ${attachment.fileName ?? (isVideo ? "video" : "image")}`}
                 className={cn(
                     "relative aspect-square overflow-hidden rounded-lg bg-muted transition-opacity hover:opacity-90",
-                    single ? "w-60" : "w-full"
+                    single ? "w-52 md:w-60" : "w-full"
                 )}>
                 {isImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -127,7 +127,7 @@ export function MessageBubble({
                 </Avatar>
             )}
 
-            <div className={cn("flex max-w-[70%] flex-col", isOwn && "items-end")}>
+            <div className={cn("flex max-w-[85%] flex-col md:max-w-[70%]", isOwn && "items-end")}>
                 {showSender && !isOwn && (
                     <span className="mb-1.5 px-1 text-xs font-medium text-muted-foreground">
                         {message.senderName ?? "Deleted user"}
@@ -167,7 +167,7 @@ export function MessageBubble({
                             {message.attachments.length > 0 && (
                                 <div
                                     className={cn(
-                                        message.attachments.length > 1 && "grid w-60 grid-cols-2 gap-1"
+                                        message.attachments.length > 1 && "grid w-52 grid-cols-2 gap-1 md:w-60"
                                     )}>
                                     {message.attachments.map((attachment) => (
                                         <AttachmentView

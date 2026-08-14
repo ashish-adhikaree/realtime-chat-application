@@ -29,6 +29,10 @@ export type ConversationSummary = {
   blocked: boolean;
 };
 
+function isHiddenByBlock(blockedAt: Date | undefined, sentAt: Date | null) {
+  return Boolean(blockedAt && sentAt && sentAt > blockedAt);
+}
+
 function previewFor(
   row:
     | { type: string | null; content: string | null; senderName: string | null; deletedAt?: Date | null }
@@ -105,6 +109,7 @@ export async function listConversations(viewerId: string): Promise<ConversationS
       senderId: message.senderId,
       senderName: user.name,
       deletedAt: message.deletedAt,
+      createdAt: message.createdAt,
     })
     .from(message)
     .innerJoin(
@@ -114,16 +119,21 @@ export async function listConversations(viewerId: string): Promise<ConversationS
     .leftJoin(user, eq(user.id, message.senderId))
     .where(inArray(message.conversationId, ids));
 
-  const blockedBy = new Set(
-    (await db.select({ blockerId: block.blockerId }).from(block).where(eq(block.blockedId, viewerId))).map(
-      (row) => row.blockerId
-    )
+  const blockedBy = new Map(
+    (
+      await db
+        .select({ blockerId: block.blockerId, blockedAt: block.createdAt })
+        .from(block)
+        .where(eq(block.blockedId, viewerId))
+    ).map((row) => [row.blockerId, row.blockedAt])
   );
 
   const previewByConversation = new Map(
     previews.map((p) => [
       p.conversationId,
-      p.senderId && blockedBy.has(p.senderId) ? { ...p, type: 'hidden' as const, content: null } : p,
+      p.senderId && isHiddenByBlock(blockedBy.get(p.senderId), p.createdAt)
+        ? { ...p, type: 'hidden' as const, content: null }
+        : p,
     ])
   );
 

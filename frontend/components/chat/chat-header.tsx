@@ -1,7 +1,7 @@
 "use client";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { InformationCircleIcon, PinIcon, UserGroupIcon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, InformationCircleIcon, PinIcon, UserGroupIcon } from "@hugeicons/core-free-icons";
 import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -13,11 +13,13 @@ export function ChatHeader({
     detail,
     onOpenInfo,
     onTogglePin,
+    onBack,
 }: {
     conversation: Conversation;
     detail: ConversationDetail | null;
     onOpenInfo: () => void;
     onTogglePin: () => void;
+    onBack: () => void;
 }) {
     const activeMembers = detail?.members.filter((member) => member.active) ?? [];
     const subtitle =
@@ -27,7 +29,16 @@ export function ChatHeader({
 
     return (
         <header className="bg-card px-4 py-2">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
+                <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="Back to conversations"
+                    onClick={onBack}
+                    className="shrink-0 md:hidden">
+                    <HugeiconsIcon icon={ArrowLeft01Icon} />
+                </Button>
+
                 <button
                     type="button"
                     aria-label="Conversation details"
@@ -54,7 +65,7 @@ export function ChatHeader({
                 </button>
 
                 {conversation.type === "group" && activeMembers.length > 1 && (
-                    <AvatarGroup>
+                    <AvatarGroup className="hidden md:flex">
                         {activeMembers.slice(0, 4).map((member) => (
                             <Avatar key={member.id} size="sm">
                                 <AvatarImage src={member.image ?? undefined} />

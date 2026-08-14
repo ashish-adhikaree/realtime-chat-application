@@ -40,7 +40,9 @@ export function NavRail({
     onOpenSettings,
     onSignOut,
     signingOut,
+    hidden,
 }: {
+    hidden?: boolean;
     panel: Panel;
     onPanelChange: (panel: Panel) => void;
     profile: Profile;
@@ -51,7 +53,12 @@ export function NavRail({
     signingOut: boolean;
 }) {
     return (
-        <nav className="flex w-16 shrink-0 flex-col items-center gap-2 border-r bg-card py-3">
+        <nav
+            className={cn(
+                "order-last flex w-full shrink-0 flex-row items-center justify-around gap-2 border-t bg-card px-2 py-2",
+                "md:order-first md:h-full md:w-16 md:flex-col md:justify-start md:border-t-0 md:border-r md:px-0 md:py-3",
+                hidden && "hidden md:flex"
+            )}>
             {ITEMS.map((item) => (
                 <Tooltip key={item.id}>
                     <TooltipTrigger
@@ -76,7 +83,7 @@ export function NavRail({
                 </Tooltip>
             ))}
 
-            <div className="mt-auto flex flex-col items-center gap-2">
+            <div className="flex flex-row items-center gap-2 md:mt-auto md:flex-col">
                 <Tooltip>
                     <TooltipTrigger
                         render={
